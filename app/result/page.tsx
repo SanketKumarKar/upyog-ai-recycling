@@ -18,6 +18,8 @@ export default function Result() {
     } | null>(null);
 
     const [ideas, setIdeas] = useState<string | null>(null);
+    const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false);
+    const [diyError, setDiyError] = useState<string | null>(null);
 
     const [condition, setCondition] = useState("clean");
     const [weight, setWeight] = useState(1);
@@ -144,19 +146,39 @@ export default function Result() {
 
                     <button
                         onClick={async () => {
-                            const res = await fetch("/api/diy", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ item }),
-                            });
+                            setIsGeneratingIdeas(true);
+                            setDiyError(null);
 
-                            const data = await res.json();
-                            setIdeas(data.ideas);
+                            try {
+                                const res = await fetch("/api/diy", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ item }),
+                                });
+                                const data = await res.json();
+
+                                if (!res.ok) {
+                                    throw new Error(data.error ?? "Could not generate DIY ideas");
+                                }
+
+                                setIdeas(data.ideas);
+                            } catch (error) {
+                                setDiyError(error instanceof Error ? error.message : "Could not generate DIY ideas");
+                            } finally {
+                                setIsGeneratingIdeas(false);
+                            }
                         }}
-                        className="mt-6 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+                        disabled={isGeneratingIdeas}
+                        className="mt-6 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        Generate Ideas- POWERED BY AI
+                        {isGeneratingIdeas ? "Generating..." : "Generate Ideas - Powered by Ollama"}
                     </button>
+
+                    {diyError && (
+                        <p className="mt-4 text-sm text-red-600" role="alert">
+                            {diyError}
+                        </p>
+                    )}
 
                     {ideas && (
                         <div className="mt-6 text-green-700 text-sm whitespace-pre-line">
